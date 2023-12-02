@@ -8,14 +8,13 @@ enum Color {
 }
 
 struct Game {
-    id: u32,
     color_sets: Vec<(Color, u32)>,
-    possible: bool,
+    minimums: (u32, u32, u32),
 }
 
 impl Game {
-    fn new(id: u32, color_sets: Vec<(Color, u32)>) -> Game {
-        Game { id, color_sets, possible: true }
+    fn new(color_sets: Vec<(Color, u32)>) -> Game {
+        Game { color_sets, minimums: (0, 0, 0) }
     }
 }
 
@@ -23,8 +22,6 @@ fn main() {
     let file = File::open("src/input").expect("File not found");
     let buf_reader = BufReader::new(file);
     let mut games: Vec<Game> = Vec::new();
-
-    let mut id = 1;
 
     buf_reader.lines().for_each(|line| {
         let line = line.unwrap();
@@ -56,38 +53,23 @@ fn main() {
             });
         });
 
-        games.push(Game::new(id, color_sets));
-
-        id += 1;
+        games.push(Game::new(color_sets));
     });
 
-    let mut possible_count = 0;
+    let mut sum_power = 0;
 
     games.into_iter().for_each(|mut game| {
         game.color_sets.into_iter().for_each(|(color, amount)| {
             match color {
-                Color::Red => {
-                    if amount > 12 {
-                        game.possible = false;
-                    }
-                }
-                Color::Green => {
-                    if amount > 13 {
-                        game.possible = false;
-                    }
-                }
-                Color::Blue => {
-                    if amount > 14 {
-                        game.possible = false;
-                    }
-                }
+                Color::Red => game.minimums.0 = std::cmp::max(game.minimums.0, amount),
+                Color::Green => game.minimums.1 = std::cmp::max(game.minimums.1, amount),
+                Color::Blue => game.minimums.2 = std::cmp::max(game.minimums.2, amount),
             }
         });
 
-        if game.possible {
-            possible_count += game.id;
-        }
+        let power = game.minimums.0 * game.minimums.1 * game.minimums.2;
+        sum_power += power;
     });
 
-    println!("{}", possible_count);
+    println!("Sum power: {}", sum_power);
 }
