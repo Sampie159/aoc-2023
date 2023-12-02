@@ -1,87 +1,93 @@
 use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{prelude::*, BufReader};
 
-fn main() -> std::io::Result<()> {
-    let file = File::open("src/input")?;
+enum Color {
+    Red,
+    Green,
+    Blue,
+}
+
+struct Game {
+    id: u32,
+    color_sets: Vec<(Color, u32)>,
+    possible: bool,
+}
+
+impl Game {
+    fn new(id: u32, color_sets: Vec<(Color, u32)>) -> Game {
+        Game { id, color_sets, possible: true }
+    }
+}
+
+fn main() {
+    let file = File::open("src/input").expect("File not found");
     let buf_reader = BufReader::new(file);
-    let mut counter = 0;
+    let mut games: Vec<Game> = Vec::new();
+
+    let mut id = 1;
 
     buf_reader.lines().for_each(|line| {
         let line = line.unwrap();
+        let line = line.split(':').collect::<Vec<&str>>();
+        let line = line[1].split(';').collect::<Vec<&str>>();
 
-        counter += find_number_in_string(line);
+        let mut color_sets: Vec<(Color, u32)> = Vec::new();
+
+        line.into_iter().for_each(|color_set| {
+            let color_set = color_set
+                .split(',')
+                .collect::<Vec<&str>>()
+                .into_iter()
+                .map(|line| line.trim())
+                .collect::<Vec<&str>>();
+
+            color_set.into_iter().for_each(|line| {
+                let line = line.split(' ').collect::<Vec<&str>>();
+                let (amount, color) = (line[0].parse::<u32>().unwrap(), line[1]);
+
+                let color = match color {
+                    "red" => Color::Red,
+                    "green" => Color::Green,
+                    "blue" => Color::Blue,
+                    _ => panic!("Invalid color"),
+                };
+
+                color_sets.push((color, amount));
+            });
+        });
+
+        games.push(Game::new(id, color_sets));
+
+        id += 1;
     });
 
-    println!("{}", counter);
+    let mut possible_count = 0;
 
-    Ok(())
-}
-
-fn find_number_in_string(string: String) -> i32 {
-    let numbers = [
-        ("one", '1'),
-        ("two", '2'),
-        ("three", '3'),
-        ("four", '4'),
-        ("five", '5'),
-        ("six", '6'),
-        ("seven", '7'),
-        ("eight", '8'),
-        ("nine", '9'),
-    ];
-
-    let mut string_aux = String::new();
-
-    for i in 0..string.len() {
-        let mut found = false;
-
-        for num in numbers {
-            let max = if i + num.0.len() > string.len() {
-                string.len()
-            } else {
-                i + num.0.len()
-            };
-            let string_aux2 = &string[i..max];
-
-            if let b'0'..=b'9' = string.chars().nth(i).unwrap() as u8 {
-                string_aux.push(string.chars().nth(i).unwrap());
-                found = true;
-                break;
-            } else if string_aux2.contains(num.0) {
-                string_aux.push(num.1);
-                found = true;
-                break;
+    games.into_iter().for_each(|mut game| {
+        game.color_sets.into_iter().for_each(|(color, amount)| {
+            match color {
+                Color::Red => {
+                    if amount > 12 {
+                        game.possible = false;
+                    }
+                }
+                Color::Green => {
+                    if amount > 13 {
+                        game.possible = false;
+                    }
+                }
+                Color::Blue => {
+                    if amount > 14 {
+                        game.possible = false;
+                    }
+                }
             }
+        });
+
+        if game.possible {
+            possible_count += game.id;
         }
+    });
 
-        if found {
-            break;
-        }
-    }
-
-    for i in (0..string.len()).rev() {
-        let mut found = false;
-
-        for num in numbers {
-            let min = if num.0.len() > i { 0 } else { i - num.0.len() };
-            let string_aux2 = &string[min..=i];
-
-            if let b'0'..=b'9' = string.chars().nth(i).unwrap() as u8 {
-                string_aux.push(string.chars().nth(i).unwrap());
-                found = true;
-                break;
-            } else if string_aux2.contains(num.0) {
-                string_aux.push(num.1);
-                found = true;
-                break;
-            }
-        }
-
-        if found {
-            break;
-        }
-    }
-
-    string_aux.parse::<i32>().unwrap_or(0)
+    println!("{}", possible_count);
 }
