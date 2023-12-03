@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+#[derive(Clone)]
 struct Number {
     value: u32,
     length: i32,
@@ -35,15 +36,36 @@ impl Number {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct Symbol {
     x: i32,
     y: i32,
+    char: u8,
+    adjacents: Vec<u32>,
 }
 
 impl Symbol {
-    fn new(x: i32, y: i32) -> Symbol {
-        Symbol { x, y }
+    fn new(x: i32, y: i32, char: u8) -> Symbol {
+        Symbol {
+            x,
+            y,
+            char,
+            adjacents: Vec::new(),
+        }
+    }
+
+    fn find_gears(&mut self, numbers: Vec<Number>) {
+        if self.char == b'*' {
+            numbers.iter().for_each(|number| {
+                if self.x >= number.x - 1
+                    && self.x <= number.x + 1
+                    && self.y >= number.y - 1
+                    && self.y <= number.y + number.length
+                {
+                    self.adjacents.push(number.value);
+                }
+            });
+        }
     }
 }
 
@@ -67,7 +89,6 @@ fn part1() {
     });
 
     let sum = numbers.iter().fold(0, {
-        let symbols = symbols;
         move |acc, number| {
             if number.symbol_adjacent(symbols.to_vec()) {
                 acc + number.value
@@ -81,7 +102,33 @@ fn part1() {
 }
 
 fn part2() {
-    println!("Part 2");
+    let file = File::open("src/input").expect("File not found");
+    let buf_reader = BufReader::new(file);
+
+    let mut line_x = 0;
+
+    let mut numbers: Vec<Number> = Vec::new();
+    let mut symbols: Vec<Symbol> = Vec::new();
+
+    buf_reader.lines().for_each(|line| {
+        parse_string(line.unwrap(), &mut numbers, &mut symbols, line_x);
+        line_x += 1;
+    });
+
+    let sum = symbols.into_iter().fold(0, {
+        let numbers = numbers;
+        move |acc, mut symbol| {
+            symbol.find_gears(numbers.to_vec());
+
+            if symbol.adjacents.len() == 2 {
+                acc + symbol.adjacents[0] * symbol.adjacents[1]
+            } else {
+                acc
+            }
+        }
+    });
+
+    println!("Part 2: {}", sum);
 }
 
 fn parse_string(input: String, numbers: &mut Vec<Number>, symbols: &mut Vec<Symbol>, line_x: i32) {
@@ -104,7 +151,7 @@ fn parse_string(input: String, numbers: &mut Vec<Number>, symbols: &mut Vec<Symb
             numbers.push(Number::new(value, length, line_x, y));
             line_y += 1;
         } else if input[line_y as usize] != b'.' {
-            symbols.push(Symbol::new(line_x, line_y));
+            symbols.push(Symbol::new(line_x, line_y, input[line_y as usize]));
             line_y += 1;
         } else {
             line_y += 1;
